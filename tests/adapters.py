@@ -6,7 +6,12 @@ from typing import Any
 
 import torch
 from torch.utils.data import Dataset
-from transformers import PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizerBase, AutoTokenizer
+
+
+
+from cs336_alignment.answer_scripts.get_dpo_loss import get_dpo
+from cs336_alignment.functions import InstructionDataset, get_batch_loader, gms8k_parser, mmlu_parser
 
 
 def get_packed_sft_dataset(
@@ -36,6 +41,9 @@ def get_packed_sft_dataset(
         "input_ids" contains the token IDs for the language modeling inputs, and "labels" contains
         the token IDs for the language modeling labels.
     """
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    return InstructionDataset(tokenizer, dataset_path, seq_length, shuffle)
     raise NotImplementedError
 
 
@@ -59,6 +67,7 @@ def run_iterate_batches(
     Returns:
         Iterable over batches, where each batch has size `batch_size`.
     """
+    return get_batch_loader(dataset, batch_size, shuffle)
     raise NotImplementedError
 
 
@@ -85,6 +94,7 @@ def run_parse_mmlu_response(
         str (one of "A", "B", "C", or "D") if the model output can be parsed into a prediction,
         else None.
     """
+    return mmlu_parser(mmlu_example, model_output)
     raise NotImplementedError
 
 
@@ -102,6 +112,7 @@ def run_parse_gsm8k_response(
         str with the predicted numeric answer if the model output can be parsed into a prediction,
         else None.
     """
+    return gms8k_parser(model_output)
     raise NotImplementedError
 
 
@@ -137,4 +148,5 @@ def compute_per_instance_dpo_loss(
     Returns:
         torch.Tensor with the DPO loss for this example.
     """
+    return get_dpo(lm, lm_ref, tokenizer, beta, prompt, response_chosen, response_rejected)
     raise NotImplementedError
